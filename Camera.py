@@ -1,7 +1,6 @@
 import serial
 from .constants import *
-from . import Listener, Sender, Actions
-
+from . import ImageRef, ListenerInterface, Actions, SenderInterface
 
 class Camera:
 
@@ -9,44 +8,42 @@ class Camera:
         pass
 
     def sendActionCommand(self, command, data=0, avoidIntro=False):
-        if (not avoidIntro and not Sender.sendIntroduction(self.ser)):
+        if (not avoidIntro and not SenderInterface.sendIntroduction(self.ser)):
             return False
 
-        Sender.sendBytes(self.ser, Actions.actionCommand(command, data))
-        if (Listener.readExpected(self.ser, [ACK, ACTION_COMPLETE]) == ACTION_COMPLETE):
+        SenderInterface.sendBytes(self.ser, Actions.actionCommand(command, data))
+        if (ListenerInterface.readExpected(self.ser, [ACK, ACTION_COMPLETE]) == ACTION_COMPLETE):
             return True
 
         return False
 
-    def goHighSpeed(self):
-        Sender.sendIntroduction(self.ser, high_speed=True)
 
     def sendReadIntCommand(self, command, avoidIntro=False):
-        if (not avoidIntro and not Sender.sendIntroduction(self.ser)):
+        if (not avoidIntro and not SenderInterface.sendIntroduction(self.ser)):
             return False
 
-        Sender.sendBytes(self.ser, Actions.readCommand(command))
+        SenderInterface.sendBytes(self.ser, Actions.readCommand(command))
 
-        return Listener.read(self.ser)
+        return ListenerInterface.read(self.ser)
 
     def sendSetIntCommand(self, command, data=0, avoidIntro=False):
-        if (not avoidIntro and not Sender.sendIntroduction(self.ser)):
+        if (not avoidIntro and not SenderInterface.sendIntroduction(self.ser)):
             return False
 
-        Sender.sendBytes(self.ser, Actions.setIntCommand(command, data))
+        SenderInterface.sendBytes(self.ser, Actions.setIntCommand(command, data))
 
-        if (Listener.readExpected(self.ser, [ACK]) == ACTION_COMPLETE):
+        if (ListenerInterface.readExpected(self.ser, [ACK]) == ACTION_COMPLETE):
             return True
 
         return False
 
     def sendReadVdataCommand(self, command, avoidIntro=False):
-        if (not avoidIntro and not Sender.sendIntroduction(self.ser)):
+        if (not avoidIntro and not SenderInterface.sendIntroduction(self.ser)):
             return False
 
-        Sender.sendBytes(self.ser, Actions.readCommand(command))
+        SenderInterface.sendBytes(self.ser, Actions.readCommand(command))
 
-        return Listener.read(self.ser)
+        return ListenerInterface.read(self.ser)
 
     def sendCommand(self, command, data=0, avoidIntro=False):
         if (command[0] == ACTION):
@@ -80,11 +77,7 @@ class Camera:
         self.goHighSpeed()
         self.sendCommand(FRAMES_SELECT, count, avoidIntro=True)
         output = self.sendCommand(FRAMES_GET, avoidIntro=True)
-        with open("output.bmp", "wb") as binary_file:   
-            # Write bytes to file
-            binary_file.write(output)
-        return len(output)
-
+        return ImageRef.ImageRef.fromBytes( output )
 
     def length_last_shot(self):
         count = self.sendCommand(FRAMES_COUNT)
@@ -104,10 +97,10 @@ class Camera:
             return False
 
         for _ in range(5):
-            Sender.sendByte(self.ser, INIT)
+            SenderInterface.sendByte(self.ser, INIT)
 
             while True:
-                readed = Listener.read(self.ser)
+                readed = ListenerInterface.read(self.ser)
                 if (readed == TIMEOUT):
                     break
                 if (readed == NACK):
